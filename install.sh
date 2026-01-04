@@ -2,6 +2,7 @@
 
 # Pterodactyl 工具安裝腳本
 # 此腳本會將 Pterodactyl 管理工具安裝到系統中，使其可以全局使用
+# 支持本地安裝和遠程安裝：curl -sSL https://your-repo/install.sh | bash
 
 set -e
 
@@ -17,6 +18,10 @@ NC='\033[0m' # No Color
 INSTALL_DIR="/usr/local/bin"
 MANAGER_NAME="ptero-manager"
 QUICK_NAME="ptero-quick"
+
+# GitHub 倉庫信息（如果你有的話，可以修改這裡）
+REPO_URL="https://raw.githubusercontent.com/YOUR_USERNAME/pterodactyl-tools/main"
+USE_REMOTE=false
 
 clear
 echo -e "${CYAN}================================================${NC}"
@@ -34,7 +39,16 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # 獲取腳本所在目錄
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" 2>/dev/null && pwd )"
+
+# 檢測是否通過 curl 管道執行
+if [ -z "$SCRIPT_DIR" ] || [ ! -f "$SCRIPT_DIR/ptero-manager.sh" ]; then
+    echo -e "${YELLOW}檢測到遠程安裝模式${NC}"
+    USE_REMOTE=true
+    TEMP_DIR=$(mktemp -d)
+    SCRIPT_DIR="$TEMP_DIR"
+    echo -e "${BLUE}臨時目錄: ${NC}$TEMP_DIR"
+fi
 
 echo -e "${BLUE}安裝目錄: ${NC}$INSTALL_DIR"
 echo -e "${BLUE}腳本來源: ${NC}$SCRIPT_DIR"
@@ -46,6 +60,7 @@ if [ -f "$INSTALL_DIR/$MANAGER_NAME" ]; then
     read -p "是否要覆蓋安裝？[y/N]: " overwrite
     if [[ ! $overwrite =~ ^[Yy]$ ]]; then
         echo -e "${YELLOW}安裝已取消${NC}"
+        [ "$USE_REMOTE" = true ] && rm -rf "$TEMP_DIR"
         exit 0
     fi
     echo ""
@@ -54,25 +69,52 @@ fi
 echo -e "${BLUE}正在安裝 Pterodactyl 管理工具...${NC}"
 echo ""
 
+# 遠程下載文件
+if [ "$USE_REMOTE" = true ]; then
+    echo -e "${YELLOW}[1/3] 下載主管理工具...${NC}"
+    if command -v curl &> /dev/null; then
+        curl -fsSL "${REPO_URL}/ptero-manager.sh" -o "$SCRIPT_DIR/ptero-manager.sh"
+    elif command -v wget &> /dev/null; then
+        wget -q "${REPO_URL}/ptero-manager.sh" -O "$SCRIPT_DIR/ptero-manager.sh"
+    else
+        echo -e "${RED}✗ 需要 curl 或 wget 來下載文件${NC}"
+        rm -rf "$TEMP_DIR"
+        exit 1
+    fi
+    
+    echo -e "${YELLOW}[2/3] 下載快速命令工具...${NC}"
+    if command -v curl &> /dev/null; then
+        curl -fsSL "${REPO_URL}/quick-commands.sh" -o "$SCRIPT_DIR/quick-commands.sh" 2>/dev/null || true
+    elif command -v wget &> /dev/null; then
+        wget -q "${REPO_URL}/quick-commands.sh" -O "$SCRIPT_DIR/quick-commands.sh" 2>/dev/null || true
+    fi
+fi
+
 # 安裝主工具
 if [ -f "$SCRIPT_DIR/ptero-manager.sh" ]; then
-    echo -e "${YELLOW}[1/2] 安裝主管理工具...${NC}"
+    echo -e "${YELLOW}[3/3] 安裝主管理工具...${NC}"
     sudo cp "$SCRIPT_DIR/ptero-manager.sh" "$INSTALL_DIR/$MANAGER_NAME"
     sudo chmod +x "$INSTALL_DIR/$MANAGER_NAME"
     echo -e "${GREEN}✓ 主工具已安裝: $MANAGER_NAME${NC}"
 else
     echo -e "${RED}✗ 找不到 ptero-manager.sh${NC}"
+    [ "$USE_REMOTE" = true ] && rm -rf "$TEMP_DIR"
     exit 1
 fi
 
 # 安裝快速命令工具
 if [ -f "$SCRIPT_DIR/quick-commands.sh" ]; then
-    echo -e "${YELLOW}[2/2] 安裝快速命令工具...${NC}"
+    echo -e "${YELLOW}安裝快速命令工具...${NC}"
     sudo cp "$SCRIPT_DIR/quick-commands.sh" "$INSTALL_DIR/$QUICK_NAME"
     sudo chmod +x "$INSTALL_DIR/$QUICK_NAME"
     echo -e "${GREEN}✓ 快速命令工具已安裝: $QUICK_NAME${NC}"
 else
     echo -e "${YELLOW}! 快速命令工具未找到 (可選)${NC}"
+fi
+
+# 清理臨時文件
+if [ "$USE_REMOTE" = true ]; then
+    rm -rf "$TEMP_DIR"
 fi
 
 
