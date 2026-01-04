@@ -20,7 +20,7 @@ MANAGER_NAME="ptero-manager"
 QUICK_NAME="ptero-quick"
 
 # GitHub 倉庫信息（如果你有的話，可以修改這裡）
-REPO_URL="https://raw.githubusercontent.com/YOUR_USERNAME/pterodactyl-tools/main"
+REPO_URL="https://raw.githubusercontent.com/phdassice/ptero-manager/main"
 USE_REMOTE=false
 
 clear
