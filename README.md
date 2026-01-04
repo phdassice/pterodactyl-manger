@@ -34,7 +34,7 @@ cd pterodactyl-tools
 
 或直接下載：
 ```bash
-wget https://raw.githubusercontent.com/phdassice/ptero-tools/main/install.sh
+curl -sSL https://raw.githubusercontent.com/phdassice/pterodactyl-manger/refs/heads/main/install.sh | sudo bash
 ```
 
 ### 2. 添加執行權限
@@ -172,4 +172,5 @@ MIT License
 **作者**: Beach  
 **創建日期**: 2026-01-04  
 **版本**: 1.0.0
+
 
